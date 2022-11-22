@@ -1,0 +1,29 @@
+[
+    {
+        "_id":"2001",
+        "user":"0001",
+        "rating":5,
+        "content":"The text goes here",
+        "date":"yyyy/mm/dd",
+        "picture":"",
+        "recipeId":"1001"
+    },
+    {
+        "_id":"2002",
+        "user":"0001",
+        "rating":3,
+        "content":"The text goes here",
+        "date":"yyyy/mm/dd",
+        "picture":"landingpage.com",
+        "recipeId":"1002"
+    },
+    {
+        "_id":"2003",
+        "user":"0002",
+        "rating":51,
+        "content":"The text goes here",
+        "date":"yyyy/mm/dd",
+        "picture":"landingpage.com",
+        "recipeId":"1002"
+    }
+]

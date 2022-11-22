@@ -1,0 +1,86 @@
+[
+    {
+        "_id": "1001",
+        "name": "Sweet Coffee Cookies",
+        "estCost":5.5,
+        "ingredients":{
+            "req":["Flour","Milk","Coffee Beans","Unsalted Butter"],
+            "optional":[]
+        },
+        "prepSteps":[],
+        "steps": [
+            "Mix flour, milk, coffee and butter",
+            "Preheat oven to 100 and bake mix for 1 hour after splitting the portion",
+            "Cool for an hour and enjoy with tea or coffee"
+        ],
+        "picture": "www.foodpic.com",
+        "lastEdit": "2020-12-10T13:49:51.141Z",
+        "duration": {
+            "prep": "",
+            "cooking": "2hr 30mins"
+        },
+        "userId": "0001",
+        "cookingUtilitiesId":["3001"],
+        "showGameId":"4001",
+        "foodTags":["5001"],
+        "reviewId":["2001"]
+    },
+    {
+        "_id": "1002",
+        "name": "Lembas Bread",
+        "estCost":5.5,
+        "ingredients":{
+            "req":["Flour","Sugar","Salted Butter"],
+            "optional":["banana leaves"]
+        },
+        "prepSteps":[],
+        "steps": [
+            "Mix flour, sugar, and butter",
+            "Preheat oven to 100 and bake mix for 30mins after bake for another 1hour at 80",
+            "Cool for before slicing into slices",
+            "Warp in banana leaves for 'Coolness'"
+        ],
+        "picture": "www.foodpic.com",
+        "lastEdit": "2020-12-10T13:49:51.141Z",
+        "duration": {
+            "prep": "",
+            "cooking": "1hr 30mins"
+        },
+        "userId": "0001",
+        "cookingUtilitiesId":["3001"],
+        "showGameId":"4002",
+        "foodTags":["5001","5002"],
+        "reviewId":["2002","2003"]
+    },
+    {
+        "_id": "1003",
+        "name": "Aunt Cass Spam Spaghetti",
+        "estCost":5.5,
+        "ingredients":{
+            "req":["Meat","Spaghetti","Olive Oil","Salt","Pepper"],
+            "optional":["Lemon Zest"]
+        },
+        "prepSteps":[
+            "Set meat a to room temp",
+            "Preboil Spaghetti till soft(not cooked)"
+        ],
+        "steps": [
+            "Heat up a pan with a a generous dose of olive oil",
+            "Pan sear the meat till it is done and remove from pan to sit",
+            "Add Spaghetti into pan pan fry till Spaghetti is evenly coated before adding salt and pepper",
+            "Cut Meat into slices",
+            "Serve with love"
+        ],
+        "picture": "www.foodpic.com",
+        "lastEdit":"2021-12-10T13:49:51.141Z",
+        "duration": {
+            "prep": "20mins",
+            "cooking": "1hr 30mins"
+        },
+        "userId": "0003",
+        "cookingUtilitiesId":["3002","3003"],
+        "showGameId":"4003",
+        "foodTags":[],
+        "reviewId":[]  
+    }
+]

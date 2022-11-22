@@ -1,0 +1,35 @@
+[
+    {
+        "_id": "0001",
+        "name": "Tom Cardy",
+        "email": "TomCardy@gmail.com",
+        "password": "mypassword",
+        "dob":"10/12/2018",
+        "age": "",
+        "profilePic":"www.mypic.com",
+        "recipeId":["1001","1002"],
+        "reviewsId":["2001","2002"]
+    },
+    {
+        "_id": "0002",
+        "name": "Dick Hardon",
+        "email": "DickHardon@yahoo.com",
+        "password": "mypassword2",
+        "dob":"10/12/1994",
+        "age": "",
+        "profilePic":"www.mypic.com",
+        "recipeId":[],
+        "reviewsId":["2003"]
+    },
+    {
+        "_id": "0003",
+        "name": "Harry Pothead",
+        "email": "HarryPothead@yahoo.com",
+        "password": "mypassword3",
+        "dob":"10/12/999",
+        "age": "",
+        "profilePic":"",
+        "recipeId":["1003"],
+        "reviewsId":[]
+    }
+] 

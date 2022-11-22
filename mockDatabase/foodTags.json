@@ -1,0 +1,17 @@
+[
+    {
+        "foodTagId":"5001",
+        "name":"Vegetarian",
+        "recipeTagged":["1001","1002"]
+    },
+    {
+        "foodTagId":"5002",
+        "name":"Gluten Free",
+        "recipeTagged":["1002"]
+    },
+    {
+        "foodTagId":"5003",
+        "name":"Extreme Vegan",
+        "recipeTagged":[]
+    }
+]
