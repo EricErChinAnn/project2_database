@@ -3,6 +3,7 @@ const cors = require("cors");
 require("dotenv").config();
 const ObjectId = require("mongodb").ObjectId;
 const MongoUtil = require("./MongoUtil");
+const { ObjectID } = require("mongodb");
 
 const mongoUrl = process.env.MONGO_URI
 
@@ -26,7 +27,7 @@ async function main() {
         res.json(result);
     })
 
-    // Add new Recipe
+    //Add new Recipe/showGame
     app.post("/addRecipe", async (req, res) => {
 
         // ObjectId(show._id) 
@@ -45,24 +46,25 @@ async function main() {
             let cookingDuration = req.body.duration.cooking;
             let cookingTools = req.body.cookingTools;
 
-            let user = "";
+            let user = req.body.user;
             let foodTags = [];
             let reviewId = [];
-            let showGameId = "";
+            let showGameId = req.body.showGameId;
 
             //===== BREAK ===== BREAK ===== BREAK ===== BREAK ===== BREAK ===== BREAK ===== BREAK ===== BREAK ===== BREAK ===== BREAK =====
 
             let recipeId = "";
-            let showName = "";
-            let showCategory = "";
-            let showInfo = "";
-            let showAppearIn = "";
-            let showPicture = "";
+            let showName = req.body.showName;
+            let showCategory = req.body.showCategory;
+            let showInfo = req.body.showInfo;
+            let showAppearIn = req.body.showAppearIn;
+            let showPicture = req.body.showPicture;
 
-            if (!name || !estCost || !ingredientsReq ||
-                !steps || !picture || !cookingDuration || !cookingTools ||
-                !user || !showGameId || !showName || !showCategory ||
-                !showInfo || !showAppearIn || !showPicture
+            if (!name || !estCost || !ingredientsReq ||!steps 
+                || !picture || !cookingDuration || !cookingTools || !user
+
+                || !showGameId || !showName || !showCategory 
+                || !showInfo || !showAppearIn || !showPicture
             ) {
                 res.status(400);
                 res.json({ "error": "Please enter the required fields" })
@@ -118,13 +120,13 @@ async function main() {
         }
     })
 
-    //Show Recipe
+    //Show Searched Recipe
     app.get("/recipe", async (req, res) => {
         let search = {};
 
         //Search via name (This Works)
         if (req.query.name) {
-            search["name"] = {
+            search["name"] = { 
                 "$regex": req.query.name,
                 "$options": "i"
             }
@@ -167,6 +169,10 @@ async function main() {
         res.json(results)
     })
 
+
+//========= Break ========= Break ========= Break ========= Break ========= Break ========= Break =========
+
+
     //Add new Users
     app.post("/addUser", async (req, res) => {
 
@@ -198,6 +204,55 @@ async function main() {
 
         res.status(200);
         res.json(result);
+    })
+
+    //Show User Account
+    app.get("/user/:userId", async (req, res) => {
+        let result = await MongoUtil.getDB().collection("user").find({"_id":ObjectId(req.params.userId)}).toArray();
+        
+        res.status(200);
+        res.json(result);
+    })
+
+    //Edit User
+    app.put("/updateUser/:userId", async (req, res) =>{
+        try {
+            let modification = {
+            "name":req.body.name,
+            "email":req.body.email,
+            "password":req.body.password,
+            "dob":req.body.dob,
+            "age":req.body.age,
+            "profilePic":req.body.profilePic,
+            "recipeId": req.body.recipeId,
+            "reviewsId": req.body.reviewsId
+        };
+
+        const resultUpdateUser = await MongoUtil.getDB().collection("user").updateOne(
+            {"_id":ObjectId(req.params.userId)},
+            {
+                "$set": modification
+            }
+            )
+            res.status(200);
+            res.json({"message":"User Updated"})
+        } catch (e) {
+            res.status(500);
+            res.send(e);
+            console.log(e);
+        }
+    })
+
+    //Delete User
+    app.delete("/deleteUser/:userId", async (req, res) =>{
+        try {
+            await MongoUtil.getDB().collection("user").deleteOne({"_id":ObjectId(req.params.userId)})
+            res.status(200);
+            res.json({"message":"User have been deleted"})
+        } catch (error) {
+            res.status(500);
+            res.json({"error":error})
+        }
     })
 }
 
