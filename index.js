@@ -4,6 +4,7 @@ require("dotenv").config();
 const ObjectId = require("mongodb").ObjectId;
 const MongoUtil = require("./MongoUtil");
 const { ObjectID } = require("mongodb");
+const e = require("express");
 
 const mongoUrl = process.env.MONGO_URI
 
@@ -47,7 +48,7 @@ async function main() {
             let cookingTools = req.body.cookingTools;
 
             let user = req.body.user;
-            let foodTags = [];
+            let foodTags = req.body.foodTags;
             let reviewId = [];
             let showGameId = req.body.showGameId;
 
@@ -60,10 +61,10 @@ async function main() {
             let showAppearIn = req.body.showAppearIn;
             let showPicture = req.body.showPicture;
 
-            if (!name || !estCost || !ingredientsReq ||!steps 
+            if (!name || !estCost || !ingredientsReq || !steps
                 || !picture || !cookingDuration || !cookingTools || !user
 
-                || !showGameId || !showName || !showCategory 
+                || !showGameId || !showName || !showCategory
                 || !showInfo || !showAppearIn || !showPicture
             ) {
                 res.status(400);
@@ -126,7 +127,7 @@ async function main() {
 
         //Search via name (This Works)
         if (req.query.name) {
-            search["name"] = { 
+            search["name"] = {
                 "$regex": req.query.name,
                 "$options": "i"
             }
@@ -141,13 +142,13 @@ async function main() {
         if (req.query.reqIngredients) {
             let searchArray = [];
             if (req.query.reqIngredients.isArray()) {
-                req.query.reqIngredients.forEach((each)=>{
-                    searchArray.push(RegExp((each),"i"))
+                req.query.reqIngredients.forEach((each) => {
+                    searchArray.push(RegExp((each), "i"))
                 })
                 search["ingredients.req"] = {
                     "$all": searchArray
                 }
-            } else if(req.query.reqIngredients) {
+            } else if (req.query.reqIngredients) {
                 search["ingredients.req"] = {
                     "$in": [req.query.reqIngredients]
                 }
@@ -162,15 +163,121 @@ async function main() {
             }
         }
 
-        console.log(search);
-
-        let results = await MongoUtil.getDB().collection("recipe").find(search).toArray();
+        let results = await MongoUtil.getDB().collection("recipe")
+        // .find(search)
+        .aggregate([
+            {
+                $match:search
+            },
+            {$lookup:{
+                from:"showGame",
+                localField:"showGameId",
+                foreignField:"_id",
+                as:"showGameId"
+            }}
+        ])
+        .toArray();
         res.status(200);
         res.json(results)
     })
 
+    //Update Recipe via ID
+    app.put("/updateRecipe/:recipeId", async (req, res) => {
 
-//========= Break ========= Break ========= Break ========= Break ========= Break ========= Break =========
+        try {
+            let lastEdit = (new Date()).getDate() + "/" + (new Date()).getMonth() + "/" + (new Date()).getFullYear()
+            
+            let modification = {
+                "lastEdit":lastEdit
+            }
+
+            let name = req.body.name;
+            if (name) {
+                modification["name"]=name;
+            }
+            let estCost = req.body.estCost;
+            if(estCost){
+                modification["estCost"]=estCost;
+            }
+            let ingredientsReq = req.body.ingredients.req;
+            if(ingredientsReq){
+                modification["ingredients.req"]=ingredientsReq;
+            }
+            let ingredientsOptional = req.body.ingredients.optional;
+            if(ingredientsOptional){
+                modification["ingredients.optional"]=ingredientsOptional;
+            }
+            let prepSteps = req.body.prepSteps;
+            if(prepSteps){
+                modification["prepSteps"]=prepSteps;
+            }
+            let steps = req.body.steps;
+            if(steps){
+                modification["steps"]=steps;
+            }
+            let picture = req.body.picture;
+            if(picture){
+                modification["picture"]=picture;
+            }
+            let prepDuration = req.body.duration.prep;
+            if(prepDuration){
+                modification["duration.prep"]=prepDuration;
+            }
+            let cookingDuration = req.body.duration.cooking;
+            if(cookingDuration){
+                modification["duration.cooking"]=cookingDuration;
+            }
+            let cookingTools = req.body.cookingTools;
+            if(cookingTools){
+                modification["cookingTools"]=cookingTools;
+            }
+            let foodTags = req.body.foodTags;
+            if(foodTags){
+                if(foodTags.isArray()){
+                modification["foodTags"]=foodTags;
+                } else if (foodTags) {
+                    modification["foodTags"]=[foodTags];
+                }
+            }
+            let showGameId = req.body.showGameId;
+            if(showGameId){
+                modification["showGameId"]=showGameId;
+            }
+
+            await MongoUtil.getDB().collection('recipe').updateOne({
+                    "_id":ObjectId(req.params.recipeId)
+                },{
+                    '$set': modification
+                });
+
+            res.status(200);
+            res.json({
+                'message':'Update success'
+            })
+
+        } catch (e) {
+            console.log(e);
+            res.status(500);
+        }
+    })
+
+    //Delete Recipe via ID
+    app.delete("/deleteRecipe/:recipeId",async(req,res)=>{
+        try {
+            await MongoUtil.getDB().collection("recipe").deleteOne({ "_id": ObjectId(req.params.recipeId) })
+            res.status(200);
+            res.json({ "message": "User have been deleted" })
+        } catch (error) {
+            res.status(500);
+            res.json({ "error": error })
+        }
+    })
+
+
+
+    //========= Break ========= Break ========= Break ========= Break ========= Break ========= Break =========
+
+
 
 
     //Add new Users
@@ -208,34 +315,34 @@ async function main() {
 
     //Show User Account
     app.get("/user/:userId", async (req, res) => {
-        let result = await MongoUtil.getDB().collection("user").find({"_id":ObjectId(req.params.userId)}).toArray();
-        
+        let result = await MongoUtil.getDB().collection("user").find({ "_id": ObjectId(req.params.userId) }).toArray();
+
         res.status(200);
         res.json(result);
     })
 
     //Edit User
-    app.put("/updateUser/:userId", async (req, res) =>{
+    app.put("/updateUser/:userId", async (req, res) => {
         try {
             let modification = {
-            "name":req.body.name,
-            "email":req.body.email,
-            "password":req.body.password,
-            "dob":req.body.dob,
-            "age":req.body.age,
-            "profilePic":req.body.profilePic,
-            "recipeId": req.body.recipeId,
-            "reviewsId": req.body.reviewsId
-        };
+                "name": req.body.name,
+                "email": req.body.email,
+                "password": req.body.password,
+                "dob": req.body.dob,
+                "age": req.body.age,
+                "profilePic": req.body.profilePic,
+                "recipeId": req.body.recipeId,
+                "reviewsId": req.body.reviewsId
+            };
 
-        const resultUpdateUser = await MongoUtil.getDB().collection("user").updateOne(
-            {"_id":ObjectId(req.params.userId)},
-            {
-                "$set": modification
-            }
+            const resultUpdateUser = await MongoUtil.getDB().collection("user").updateOne(
+                { "_id": ObjectId(req.params.userId) },
+                {
+                    "$set": modification
+                }
             )
             res.status(200);
-            res.json({"message":"User Updated"})
+            res.json({ "message": "User Updated" })
         } catch (e) {
             res.status(500);
             res.send(e);
@@ -244,14 +351,14 @@ async function main() {
     })
 
     //Delete User
-    app.delete("/deleteUser/:userId", async (req, res) =>{
+    app.delete("/deleteUser/:userId", async (req, res) => {
         try {
-            await MongoUtil.getDB().collection("user").deleteOne({"_id":ObjectId(req.params.userId)})
+            await MongoUtil.getDB().collection("user").deleteOne({ "_id": ObjectId(req.params.userId) })
             res.status(200);
-            res.json({"message":"User have been deleted"})
+            res.json({ "message": "User have been deleted" })
         } catch (error) {
             res.status(500);
-            res.json({"error":error})
+            res.json({ "error": error })
         }
     })
 }
