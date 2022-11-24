@@ -5,6 +5,7 @@ const ObjectId = require("mongodb").ObjectId;
 const MongoUtil = require("./MongoUtil");
 const { ObjectID } = require("mongodb");
 const e = require("express");
+const jwt = require("jsonwebtoken");
 
 const mongoUrl = process.env.MONGO_URI
 
@@ -16,6 +17,31 @@ app.use(cors());
 async function main() {
     await MongoUtil.connect(mongoUrl, "fantasy_gourmet")
     console.log("Database Connected");
+    const generateAccessToken = (id,email,password)=>{
+        return jwt.sign({
+            "user_id":id,
+            "email":email,
+            "password":password
+        }, process.env.TOKEN_SECRET,{
+            expiresIn:"1h"
+        })
+    };
+    const checkIfAuthenticatedJWT = (req,res,next)=>{
+        const authHeader = req.headers.authorization;
+        if(authHeader){
+            const token = authHeader.split(" ")[1];
+            jwt.verify(token,process.env.TOKEN_SECRET,(err,user)=>{
+                if (err){
+                    return res.sendStatus(403);
+                }
+
+                req.user = user;
+                next();
+            });
+        } else {
+            res.sendStatus(401);
+        }
+    };
 
     //Based Page
     app.get("/", async (req, res) => {
@@ -29,7 +55,7 @@ async function main() {
     })
 
     //Add new Recipe/showGame
-    app.post("/addRecipe", async (req, res) => {
+    app.post("/addRecipe", checkIfAuthenticatedJWT, async (req, res) => {
 
         // ObjectId(show._id) 
         // await db.collection("show").find({kehy: "lord of the ring"})..toArray()
@@ -47,14 +73,13 @@ async function main() {
             let cookingDuration = req.body.duration.cooking;
             let cookingTools = req.body.cookingTools;
 
-            let user = req.body.user;
+            let user = req.user.user_id;
             let foodTags = req.body.foodTags;
             let reviewId = [];
             let showGameId = req.body.showGameId;
 
             //===== BREAK ===== BREAK ===== BREAK ===== BREAK ===== BREAK ===== BREAK ===== BREAK ===== BREAK ===== BREAK ===== BREAK =====
 
-            let recipeId = "";
             let showName = req.body.showName;
             let showCategory = req.body.showCategory;
             let showInfo = req.body.showInfo;
@@ -64,8 +89,8 @@ async function main() {
             if (!name || !estCost || !ingredientsReq || !steps
                 || !picture || !cookingDuration || !cookingTools || !user
 
-                || !showGameId || !showName || !showCategory
-                || !showInfo || !showAppearIn || !showPicture
+                // || !showGameId || !showName || !showCategory
+                // || !showInfo || !showAppearIn || !showPicture
             ) {
                 res.status(400);
                 res.json({ "error": "Please enter the required fields" })
@@ -99,12 +124,6 @@ async function main() {
                 "name": showName,
                 "category": showCategory,
                 "info": showInfo,
-                "taggedTo": [
-                    {
-                        "recipeId": recipeId,
-                        "appearIn": showAppearIn
-                    }
-                ],
                 "picture": showPicture
             }
 
@@ -279,7 +298,6 @@ async function main() {
 
 
 
-
     //Add new Users
     app.post("/addUser", async (req, res) => {
 
@@ -301,28 +319,45 @@ async function main() {
             "password": password,
             "dob": dob,
             "age": age,
-            "profilePic": profilePic,
-            "recipeId": [],
-            "reviewsId": []
+            "profilePic": profilePic
         }
 
         const db = MongoUtil.getDB();
         const result = await db.collection("user").insertOne(newUser);
 
-        res.status(200);
-        res.json(result);
+        res.status(201);
+        res.json({"message":"New User account is Created"});
+    })
+
+    //Login
+    app.post("/login", async (req,res)=>{
+        let user = await MongoUtil.getDB().collection("user").findOne({
+            "email":req.body.email,
+            "password":req.body.password
+        })
+        if(user){
+            let accessToken = generateAccessToken(user._id,user.email,user.password);
+            res.send({accessToken})
+        } else {
+            res.send({
+               "error":"Authentication Error"
+            })
+        }
     })
 
     //Show User Account
-    app.get("/user/:userId", async (req, res) => {
-        let result = await MongoUtil.getDB().collection("user").find({ "_id": ObjectId(req.params.userId) }).toArray();
+    // app.get("/user/:userId", async (req, res) => {
+    //     let result = await MongoUtil.getDB().collection("user").find({ "_id": ObjectId(req.params.userId) }).toArray();
 
-        res.status(200);
-        res.json(result);
+    //     res.status(200);
+    //     res.json(result);
+    // })
+    app.get("/user",checkIfAuthenticatedJWT,async(req,res)=>{
+        res.send(req.user);
     })
 
     //Edit User
-    app.put("/updateUser/:userId", async (req, res) => {
+    app.put("/updateUser/:userId",checkIfAuthenticatedJWT, async (req, res) => {
         try {
             let modification = {
                 "name": req.body.name,
@@ -330,9 +365,7 @@ async function main() {
                 "password": req.body.password,
                 "dob": req.body.dob,
                 "age": req.body.age,
-                "profilePic": req.body.profilePic,
-                "recipeId": req.body.recipeId,
-                "reviewsId": req.body.reviewsId
+                "profilePic": req.body.profilePic
             };
 
             const resultUpdateUser = await MongoUtil.getDB().collection("user").updateOne(
@@ -351,7 +384,7 @@ async function main() {
     })
 
     //Delete User
-    app.delete("/deleteUser/:userId", async (req, res) => {
+    app.delete("/deleteUser/:userId",checkIfAuthenticatedJWT, async (req, res) => {
         try {
             await MongoUtil.getDB().collection("user").deleteOne({ "_id": ObjectId(req.params.userId) })
             res.status(200);
