@@ -17,21 +17,21 @@ app.use(cors());
 async function main() {
     await MongoUtil.connect(mongoUrl, "fantasy_gourmet")
     console.log("Database Connected");
-    const generateAccessToken = (id,email,password)=>{
+    const generateAccessToken = (id, email, password) => {
         return jwt.sign({
-            "user_id":id,
-            "email":email,
-            "password":password
-        }, process.env.TOKEN_SECRET,{
-            expiresIn:"1h"
+            "user_id": id,
+            "email": email,
+            "password": password
+        }, process.env.TOKEN_SECRET, {
+            expiresIn: "3h"
         })
     };
-    const checkIfAuthenticatedJWT = (req,res,next)=>{
+    const checkIfAuthenticatedJWT = (req, res, next) => {
         const authHeader = req.headers.authorization;
-        if(authHeader){
+        if (authHeader) {
             const token = authHeader.split(" ")[1];
-            jwt.verify(token,process.env.TOKEN_SECRET,(err,user)=>{
-                if (err){
+            jwt.verify(token, process.env.TOKEN_SECRET, (err, user) => {
+                if (err) {
                     return res.sendStatus(403);
                 }
 
@@ -42,6 +42,13 @@ async function main() {
             res.sendStatus(401);
         }
     };
+    const validation = (value, warning, res) => {
+        if (!value) {
+            res.status(400);
+            res.json({ "error": warning })
+            return;
+        }
+    }
 
     //Based Page
     app.get("/", async (req, res) => {
@@ -54,56 +61,58 @@ async function main() {
         res.json(result);
     })
 
-    //Add new Recipe/showGame
+    //Add new Recipe
     app.post("/addRecipe", checkIfAuthenticatedJWT, async (req, res) => {
-
-        // ObjectId(show._id) 
-        // await db.collection("show").find({kehy: "lord of the ring"})..toArray()
-        // let show = req.body.show.toLowerCase() ==> "lord of the ring"
         try {
+            validation(req.body.name, "Please enter your recipe name", res)
             let name = req.body.name;
+
+            validation(req.body.category, "Please select a food category", res)
+            let category = req.body.category;
+
+            validation(req.body.estCost, "Please enter an estimated cost", res)
             let estCost = req.body.estCost;
-            let ingredientsReq = req.body.ingredients.req;
-            let ingredientsOptional = req.body.ingredients.optional;
+
+            validation(req.body.reqIngredients, "Please enter the list of ingredients", res);
+            let reqIngredients = req.body.reqIngredients;
+            let optionalIngredients = req.body.optionalIngredients;
+
             let prepSteps = req.body.prepSteps;
+            validation(req.body.steps, "Please enter the cooking proccess", res);
             let steps = req.body.steps;
+
+            validation(req.body.picture, "Please upload a picture", res);
             let picture = req.body.picture;
-            let lastEdit = (new Date()).getDate() + "/" + (new Date()).getMonth() + "/" + (new Date()).getFullYear()
-            let prepDuration = req.body.duration.prep;
-            let cookingDuration = req.body.duration.cooking;
+
+            let lastEdit = (new Date()).getDate() + "/" + (new Date()).getMonth() + "/" + (new Date()).getFullYear();
+
+            let prepDuration = req.body.prepDuration;
+            validation(req.body.cookingDuration, "Please enter the cooking duration", res)
+            let cookingDuration = req.body.cookingDuration;
+
+            validation(req.body.cookingTools, "Please enter the tools used in this recipe", res)
             let cookingTools = req.body.cookingTools;
 
-            let user = req.user.user_id;
-            let foodTags = req.body.foodTags;
-            let reviewId = [];
-            let showGameId = req.body.showGameId;
-
-            //===== BREAK ===== BREAK ===== BREAK ===== BREAK ===== BREAK ===== BREAK ===== BREAK ===== BREAK ===== BREAK ===== BREAK =====
-
-            let showName = req.body.showName;
-            let showCategory = req.body.showCategory;
-            let showInfo = req.body.showInfo;
-            let showAppearIn = req.body.showAppearIn;
-            let showPicture = req.body.showPicture;
-
-            if (!name || !estCost || !ingredientsReq || !steps
-                || !picture || !cookingDuration || !cookingTools || !user
-
-                // || !showGameId || !showName || !showCategory
-                // || !showInfo || !showAppearIn || !showPicture
-            ) {
-                res.status(400);
-                res.json({ "error": "Please enter the required fields" })
-                return;
+            let user = ObjectId(req.user.user_id);
+            let foodTags = [];
+            if (req.body.foodTags) {
+                req.body.foodTags.forEach((each) => {
+                    foodTags.push(ObjectId(each))
+                })
             }
+            let reviewId = [];
+
+            validation(req.body.showGameId, "Please select origin of the recipe", res)
+            let showGameId = ObjectId(req.body.showGameId);
 
             let newRecipe =
             {
                 "name": name,
+                "category": category,
                 "estCost": estCost,
                 "ingredients": {
-                    "req": ingredientsReq,
-                    "optional": ingredientsOptional
+                    "req": reqIngredients,
+                    "optional": optionalIngredients
                 },
                 "prepSteps": prepSteps,
                 "steps": steps,
@@ -120,20 +129,10 @@ async function main() {
                 "reviewId": reviewId
             }
 
-            let newShowGame = {
-                "name": showName,
-                "category": showCategory,
-                "info": showInfo,
-                "picture": showPicture
-            }
-
             const db = MongoUtil.getDB();
             const resultRecipe = await db.collection("recipe").insertOne(newRecipe);
-            const resultShowGame = await db.collection("showGame").insertOne(newShowGame);
             res.status(200);
             res.json(resultRecipe);
-            res.json(resultShowGame);
-
         } catch (e) {
             console.log(e);
             res.status(500);
@@ -144,7 +143,7 @@ async function main() {
     app.get("/recipe", async (req, res) => {
         let search = {};
 
-        //Search via name (This Works)
+        //Search via name 
         if (req.query.name) {
             search["name"] = {
                 "$regex": req.query.name,
@@ -152,9 +151,19 @@ async function main() {
             }
         }
 
-        //Search via ShowGame ID (This Works)
+        //Search via Category
+        if (req.query.category) {
+            search["category"] = req.query.category
+        }
+
+        //Search via ShowGame ID
         if (req.query.showGameId) {
             search["showGameId"] = req.query.showGameId
+        }
+
+        //Search via User ID
+        if (req.query.userId) {
+            search["userId"] = req.query.userId
         }
 
         //Search via Ingredients Used
@@ -174,7 +183,7 @@ async function main() {
             }
         }
 
-        //Search via Est Cost (This Works)
+        //Search via Est Cost
         if (req.query.estCostMin && req.query.estCostMax) {
             search["estCost"] = {
                 "$gte": req.query.estCostMin,
@@ -183,95 +192,134 @@ async function main() {
         }
 
         let results = await MongoUtil.getDB().collection("recipe")
-        // .find(search)
-        .aggregate([
-            {
-                $match:search
-            },
-            {$lookup:{
-                from:"showGame",
-                localField:"showGameId",
-                foreignField:"_id",
-                as:"showGameId"
-            }}
-        ])
-        .toArray();
+            .aggregate([
+                {
+                    $match: search
+                },
+                {
+                    $lookup: {
+                        from: "showGame",
+                        localField: "showGameId",
+                        foreignField: "_id",
+                        as: "showGameId"
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "user",
+                        localField: "userId",
+                        foreignField: "_id",
+                        as: "userId"
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "tags",
+                        localField: "foodTags",
+                        foreignField: "_id",
+                        as: "foodTags"
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "reviews",
+                        localField: "reviewId",
+                        foreignField: "_id",
+                        as: "reviewId"
+                    }
+                }
+            ])
+            .toArray();
         res.status(200);
         res.json(results)
     })
 
     //Update Recipe via ID
-    app.put("/updateRecipe/:recipeId", async (req, res) => {
-
+    app.put("/updateRecipe/:recipeId", checkIfAuthenticatedJWT, async (req, res) => {
         try {
             let lastEdit = (new Date()).getDate() + "/" + (new Date()).getMonth() + "/" + (new Date()).getFullYear()
-            
+
             let modification = {
-                "lastEdit":lastEdit
+                "lastEdit": lastEdit
             }
 
             let name = req.body.name;
             if (name) {
-                modification["name"]=name;
+                modification["name"] = name;
             }
+
+            let category = req.body.category;
+            if (name) {
+                modification["category"] = category;
+            }
+
             let estCost = req.body.estCost;
-            if(estCost){
-                modification["estCost"]=estCost;
+            if (estCost) {
+                modification["estCost"] = estCost;
             }
+
             let ingredientsReq = req.body.ingredients.req;
-            if(ingredientsReq){
-                modification["ingredients.req"]=ingredientsReq;
+            if (ingredientsReq) {
+                modification["ingredients.req"] = ingredientsReq;
             }
+
             let ingredientsOptional = req.body.ingredients.optional;
-            if(ingredientsOptional){
-                modification["ingredients.optional"]=ingredientsOptional;
+            if (ingredientsOptional) {
+                modification["ingredients.optional"] = ingredientsOptional;
             }
+
             let prepSteps = req.body.prepSteps;
-            if(prepSteps){
-                modification["prepSteps"]=prepSteps;
+            if (prepSteps) {
+                modification["prepSteps"] = prepSteps;
             }
+
             let steps = req.body.steps;
-            if(steps){
-                modification["steps"]=steps;
+            if (steps) {
+                modification["steps"] = steps;
             }
+
             let picture = req.body.picture;
-            if(picture){
-                modification["picture"]=picture;
+            if (picture) {
+                modification["picture"] = picture;
             }
+
             let prepDuration = req.body.duration.prep;
-            if(prepDuration){
-                modification["duration.prep"]=prepDuration;
+            if (prepDuration) {
+                modification["duration.prep"] = prepDuration;
             }
+
             let cookingDuration = req.body.duration.cooking;
-            if(cookingDuration){
-                modification["duration.cooking"]=cookingDuration;
+            if (cookingDuration) {
+                modification["duration.cooking"] = cookingDuration;
             }
+
             let cookingTools = req.body.cookingTools;
-            if(cookingTools){
-                modification["cookingTools"]=cookingTools;
+            if (cookingTools) {
+                modification["cookingTools"] = cookingTools;
             }
-            let foodTags = req.body.foodTags;
-            if(foodTags){
-                if(foodTags.isArray()){
-                modification["foodTags"]=foodTags;
-                } else if (foodTags) {
-                    modification["foodTags"]=[foodTags];
-                }
+
+            let foodTags = [];
+            if (req.body.foodTags) {
+                req.body.foodTags.forEach((each) => {
+                    foodTags.push(ObjectId(each))
+                })
+                    modification["foodTags"] = foodTags;
             }
+
             let showGameId = req.body.showGameId;
-            if(showGameId){
-                modification["showGameId"]=showGameId;
+            if (showGameId) {
+                modification["showGameId"] = ObjectId(showGameId);
             }
 
             await MongoUtil.getDB().collection('recipe').updateOne({
-                    "_id":ObjectId(req.params.recipeId)
-                },{
-                    '$set': modification
-                });
+                "_id": ObjectId(req.params.recipeId)
+            }, {
+                '$set': modification
+            });
 
             res.status(200);
             res.json({
-                'message':'Update success'
+                'message': 'Update success'
             })
 
         } catch (e) {
@@ -281,11 +329,162 @@ async function main() {
     })
 
     //Delete Recipe via ID
-    app.delete("/deleteRecipe/:recipeId",async(req,res)=>{
+    app.delete("/deleteRecipe/:recipeId", checkIfAuthenticatedJWT, async (req, res) => {
         try {
+            let reviewToDelete = await MongoUtil.getDB().collection("recipe").findOne({ "_id": ObjectId(req.params.recipeId) })
+            console.log(reviewToDelete.reviewId);
+
+            if (reviewToDelete.reviewId) {
+                await MongoUtil.getDB().collection("reviews").deleteMany({ "_id": { "$in": reviewToDelete.reviewId } })
+            }
+
             await MongoUtil.getDB().collection("recipe").deleteOne({ "_id": ObjectId(req.params.recipeId) })
+
             res.status(200);
-            res.json({ "message": "User have been deleted" })
+            res.json({ "message": "Recipe have been deleted" })
+        } catch (error) {
+            res.status(500);
+            res.json({ "error": error })
+        }
+    })
+
+    //Add New ShowGame
+    app.post("/newShowGame", checkIfAuthenticatedJWT, async (req, res) => {
+        try {
+            validation(req.body.name, "Please enter a name", res)
+            let name = req.body.name;
+
+            validation(req.body.category, "Please select a category of origin", res)
+            let category = req.body.category;
+
+            validation(req.body.info, "Please enter a short description of the Show or Game", res)
+            let info = req.body.info;
+
+            validation(req.body.picture, "Please upload a picture", res);
+            let picture = req.body.picture;
+
+            let newShowGame =
+            {
+                "name": name,
+                "category": category,
+                "info": info,
+                "picture": picture
+            }
+
+            const resultShowGmae = await MongoUtil.getDB().collection("showGame").insertOne(newShowGame);
+            res.status(200);
+            res.json(resultShowGmae);
+        } catch (e) {
+            console.log(e);
+            res.status(500);
+        }
+    })
+
+
+
+    //========= Break ========= Break ========= Break ========= Break ========= Break ========= Break ========= Break ========= Break ========= Break 
+
+
+
+    //Add new Review
+    app.post("/:recipeId/addReview", checkIfAuthenticatedJWT, async (req, res) => {
+        try {
+            let postedDate = (new Date()).getDate() + "/" + (new Date()).getMonth() + "/" + (new Date()).getFullYear();
+
+            let userName = await MongoUtil.getDB().collection("user").findOne({ "_id": ObjectId(req.user.user_id) });
+
+            validation(req.body.title, "Please enter your title", res)
+            let title = req.body.title;
+
+            validation(req.body.rating, "Please select a rating", res)
+            let rating = req.body.rating;
+
+            validation(req.body.mainText, "Please enter your review", res)
+            let mainText = req.body.mainText;
+
+            let newReview =
+            {
+                "name": userName.name,
+                "userId": req.user.user_id,
+                "date": postedDate,
+                "title": title,
+                "rating": rating,
+                "mainText": mainText
+            }
+
+            const resultReview = await MongoUtil.getDB().collection("reviews").insertOne(newReview);
+            console.log(resultReview)
+
+            await MongoUtil.getDB().collection("recipe").updateOne(
+                {
+                    "_id": ObjectId(req.params.recipeId)
+                }, {
+                "$addToSet": { reviewId: resultReview.insertedId }
+            }
+            );
+
+            res.status(200);
+            res.json(resultReview);
+        } catch (e) {
+            console.log(e);
+            res.status(500);
+        }
+    })
+
+    //Update Review via ID
+    app.put("/updateReview/:reviewId", checkIfAuthenticatedJWT, async (req, res) => {
+        try {
+            let postedDate = (new Date()).getDate() + "/" + (new Date()).getMonth() + "/" + (new Date()).getFullYear()
+
+            let modification = {
+                "date": postedDate,
+            }
+
+            let title = req.body.title;
+            if (title) {
+                modification["title"] = title;
+            }
+
+            let rating = req.body.rating;
+            if (rating) {
+                modification["rating"] = rating;
+            }
+
+            let mainText = req.body.mainText;
+            if (mainText) {
+                modification["mainText"] = mainText;
+            }
+
+            await MongoUtil.getDB().collection('reviews').updateOne({
+                "_id": ObjectId(req.params.reviewId)
+            }, {
+                '$set': modification
+            });
+
+            res.status(200);
+            res.json({
+                'message': 'Update success'
+            })
+
+
+        } catch (e) {
+            console.log(e);
+            res.status(500);
+        }
+    })
+
+    //Delete Review via ID
+    app.delete("/deleteReview/:reviewId", checkIfAuthenticatedJWT, async (req, res) => {
+        try {
+            await MongoUtil.getDB().collection("recipe").updateMany(
+                {},
+                { $pull: { reviewId: ObjectId(req.params.reviewId) } }
+            )
+
+            await MongoUtil.getDB().collection("reviews").deleteOne({ "_id": ObjectId(req.params.reviewId) })
+
+            res.status(200);
+            res.json({ "message": "Review have been deleted" })
         } catch (error) {
             res.status(500);
             res.json({ "error": error })
@@ -293,8 +492,8 @@ async function main() {
     })
 
 
-
-    //========= Break ========= Break ========= Break ========= Break ========= Break ========= Break =========
+    
+    //========= Break ========= Break ========= Break ========= Break ========= Break ========= Break ========= Break ========= Break ========= Break 
 
 
 
@@ -326,21 +525,21 @@ async function main() {
         const result = await db.collection("user").insertOne(newUser);
 
         res.status(201);
-        res.json({"message":"New User account is Created"});
+        res.json({ "message": "New User account is Created" });
     })
 
     //Login
-    app.post("/login", async (req,res)=>{
+    app.post("/login", async (req, res) => {
         let user = await MongoUtil.getDB().collection("user").findOne({
-            "email":req.body.email,
-            "password":req.body.password
+            "email": req.body.email,
+            "password": req.body.password
         })
-        if(user){
-            let accessToken = generateAccessToken(user._id,user.email,user.password);
-            res.send({accessToken})
+        if (user) {
+            let accessToken = generateAccessToken(user._id, user.email, user.password);
+            res.send({ accessToken })
         } else {
             res.send({
-               "error":"Authentication Error"
+                "error": "Authentication Error"
             })
         }
     })
@@ -352,19 +551,21 @@ async function main() {
     //     res.status(200);
     //     res.json(result);
     // })
-    app.get("/user",checkIfAuthenticatedJWT,async(req,res)=>{
+    app.get("/user", checkIfAuthenticatedJWT, async (req, res) => {
         res.send(req.user);
     })
 
     //Edit User
-    app.put("/updateUser/:userId",checkIfAuthenticatedJWT, async (req, res) => {
+    app.put("/updateUser/:userId", checkIfAuthenticatedJWT, async (req, res) => {
         try {
+            let age = Number((new Date()).getFullYear()) - Number(req.body.dob.split("/")[2])
+
             let modification = {
                 "name": req.body.name,
                 "email": req.body.email,
                 "password": req.body.password,
                 "dob": req.body.dob,
-                "age": req.body.age,
+                "age": age,
                 "profilePic": req.body.profilePic
             };
 
@@ -384,7 +585,7 @@ async function main() {
     })
 
     //Delete User
-    app.delete("/deleteUser/:userId",checkIfAuthenticatedJWT, async (req, res) => {
+    app.delete("/deleteUser/:userId", checkIfAuthenticatedJWT, async (req, res) => {
         try {
             await MongoUtil.getDB().collection("user").deleteOne({ "_id": ObjectId(req.params.userId) })
             res.status(200);
