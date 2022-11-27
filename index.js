@@ -93,12 +93,17 @@ async function main() {
             validation(req.body.cookingTools, "Please enter the tools used in this recipe", res)
             let cookingTools = req.body.cookingTools;
 
-            let user = req.user.user_id;
-            let foodTags = req.body.foodTags;
+            let user = ObjectId(req.user.user_id);
+            let foodTags = [];
+            if (req.body.foodTags) {
+                req.body.foodTags.forEach((each) => {
+                    foodTags.push(ObjectId(each))
+                })
+            }
             let reviewId = [];
 
             validation(req.body.showGameId, "Please select origin of the recipe", res)
-            let showGameId = req.body.showGameId;
+            let showGameId = ObjectId(req.body.showGameId);
 
             let newRecipe =
             {
@@ -138,7 +143,7 @@ async function main() {
     app.get("/recipe", async (req, res) => {
         let search = {};
 
-        //Search via name (This Works)
+        //Search via name 
         if (req.query.name) {
             search["name"] = {
                 "$regex": req.query.name,
@@ -293,17 +298,17 @@ async function main() {
                 modification["cookingTools"] = cookingTools;
             }
 
-            let foodTags = req.body.foodTags;
-            if (foodTags) {
-                if (foodTags.isArray()) {
+            let foodTags = [];
+            if (req.body.foodTags) {
+                req.body.foodTags.forEach((each) => {
+                    foodTags.push(ObjectId(each))
+                })
                     modification["foodTags"] = foodTags;
-                } else if (foodTags) {
-                    modification["foodTags"] = [foodTags];
-                }
             }
+
             let showGameId = req.body.showGameId;
             if (showGameId) {
-                modification["showGameId"] = showGameId;
+                modification["showGameId"] = ObjectId(showGameId);
             }
 
             await MongoUtil.getDB().collection('recipe').updateOne({
@@ -326,16 +331,17 @@ async function main() {
     //Delete Recipe via ID
     app.delete("/deleteRecipe/:recipeId", checkIfAuthenticatedJWT, async (req, res) => {
         try {
-            let reviewToDelete = await MongoUtil.getDB().collection("recipe").findOne({ "_id": ObjectId("63820f1019e7854978eaabf1") })
+            let reviewToDelete = await MongoUtil.getDB().collection("recipe").findOne({ "_id": ObjectId(req.params.recipeId) })
             console.log(reviewToDelete.reviewId);
-            await MongoUtil.getDB().collection("recipe").deleteOne({ "_id": ObjectId(req.params.recipeId) })
 
             if (reviewToDelete.reviewId) {
                 await MongoUtil.getDB().collection("reviews").deleteMany({ "_id": { "$in": reviewToDelete.reviewId } })
             }
 
+            await MongoUtil.getDB().collection("recipe").deleteOne({ "_id": ObjectId(req.params.recipeId) })
+
             res.status(200);
-            res.json({ "message": "User have been deleted" })
+            res.json({ "message": "Recipe have been deleted" })
         } catch (error) {
             res.status(500);
             res.json({ "error": error })
@@ -374,7 +380,11 @@ async function main() {
         }
     })
 
-    //========= Break ========= Break ========= Break ========= Break ========= Break ========= Break =========
+
+
+    //========= Break ========= Break ========= Break ========= Break ========= Break ========= Break ========= Break ========= Break ========= Break 
+
+
 
     //Add new Review
     app.post("/:recipeId/addReview", checkIfAuthenticatedJWT, async (req, res) => {
@@ -395,6 +405,7 @@ async function main() {
             let newReview =
             {
                 "name": userName.name,
+                "userId": req.user.user_id,
                 "date": postedDate,
                 "title": title,
                 "rating": rating,
@@ -420,7 +431,7 @@ async function main() {
         }
     })
 
-    //Update Recipe via ID
+    //Update Review via ID
     app.put("/updateReview/:reviewId", checkIfAuthenticatedJWT, async (req, res) => {
         try {
             let postedDate = (new Date()).getDate() + "/" + (new Date()).getMonth() + "/" + (new Date()).getFullYear()
@@ -462,19 +473,18 @@ async function main() {
         }
     })
 
-    //Delete Recipe via ID
-    app.delete("/deleteRecipe/:recipeId", checkIfAuthenticatedJWT, async (req, res) => {
+    //Delete Review via ID
+    app.delete("/deleteReview/:reviewId", checkIfAuthenticatedJWT, async (req, res) => {
         try {
-            let reviewToDelete = await MongoUtil.getDB().collection("recipe").findOne({ "_id": ObjectId("63820f1019e7854978eaabf1") })
-            console.log(reviewToDelete.reviewId);
-            await MongoUtil.getDB().collection("recipe").deleteOne({ "_id": ObjectId(req.params.recipeId) })
+            await MongoUtil.getDB().collection("recipe").updateMany(
+                {},
+                { $pull: { reviewId: ObjectId(req.params.reviewId) } }
+            )
 
-            if (reviewToDelete.reviewId) {
-                await MongoUtil.getDB().collection("reviews").deleteMany({ "_id": { "$in": reviewToDelete.reviewId } })
-            }
+            await MongoUtil.getDB().collection("reviews").deleteOne({ "_id": ObjectId(req.params.reviewId) })
 
             res.status(200);
-            res.json({ "message": "User have been deleted" })
+            res.json({ "message": "Review have been deleted" })
         } catch (error) {
             res.status(500);
             res.json({ "error": error })
@@ -482,7 +492,8 @@ async function main() {
     })
 
 
-    //=====================================================================================
+    
+    //========= Break ========= Break ========= Break ========= Break ========= Break ========= Break ========= Break ========= Break ========= Break 
 
 
 
