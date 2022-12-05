@@ -51,18 +51,52 @@ async function main() {
     }
 
     //Based Page
-    app.get("/", async (req, res) => {
-        let result = await MongoUtil.getDB().collection("recipe").find().toArray();
+    app.get("/random", async (req, res) => {
+        let result = await MongoUtil.getDB().collection("recipe").aggregate([
+            {
+                $lookup: {
+                    from: "showGame",
+                    localField: "showGameId",
+                    foreignField: "_id",
+                    as: "showGameId"
+                }
+            },
+            {
+                $lookup: {
+                    from: "user",
+                    localField: "userId",
+                    foreignField: "_id",
+                    as: "userId"
+                }
+            },
+            {
+                $lookup: {
+                    from: "tags",
+                    localField: "foodTags",
+                    foreignField: "_id",
+                    as: "foodTags"
+                }
+            },
+            {
+                $lookup: {
+                    from: "reviews",
+                    localField: "reviewId",
+                    foreignField: "_id",
+                    as: "reviewId"
+                }
+            }
+        ])
+            .toArray();
 
         const randomize = (Math.floor(Math.random() * result.length));
 
         console.log(result[randomize]);
         res.status(200);
-        res.json(result);
+        res.json(result[randomize]);
     })
 
     //Add new Recipe
-    app.post("/addRecipe", checkIfAuthenticatedJWT, async (req, res) => {
+    app.post("/addRecipe", async (req, res) => {
         try {
             validation(req.body.name, "Please enter your recipe name", res)
             let name = req.body.name;
@@ -93,7 +127,8 @@ async function main() {
             validation(req.body.cookingTools, "Please enter the tools used in this recipe", res)
             let cookingTools = req.body.cookingTools;
 
-            let user = ObjectId(req.user.user_id);
+            let user = ObjectId(req.body.user_id);
+
             let foodTags = [];
             if (req.body.foodTags) {
                 req.body.foodTags.forEach((each) => {
@@ -139,6 +174,12 @@ async function main() {
         }
     })
 
+    app.get("/showGame", async (req, res) => {
+        let results = await MongoUtil.getDB().collection("showGame").find().toArray()
+        res.status(200);
+        res.json(results)
+    })
+
     //Show Searched Recipe
     app.get("/recipe", async (req, res) => {
         let search = {};
@@ -153,12 +194,14 @@ async function main() {
 
         //Search via Category
         if (req.query.category) {
-            search["category"] = req.query.category
+            search["category"] = {
+                "$regex" : req.query.category
+            }
         }
 
         //Search via ShowGame ID
         if (req.query.showGameId) {
-            search["showGameId"] = req.query.showGameId
+            search["showGameId"] = ObjectId(req.query.showGameId)
         }
 
         //Search via User ID
@@ -168,15 +211,24 @@ async function main() {
 
         //Search via Ingredients Used
         if (req.query.reqIngredients) {
+
+            // search["ingredients.req"] = {
+            //     "$regex": req.query.reqIngredients,
+            //     "$options": "i"
+            // }
+
             let searchArray = [];
-            if (req.query.reqIngredients.isArray()) {
+        
+            console.log(req.query.reqIngredients)
+
+            if (Array.isArray(req.query.reqIngredients)) {
                 req.query.reqIngredients.forEach((each) => {
                     searchArray.push(RegExp((each), "i"))
                 })
                 search["ingredients.req"] = {
                     "$all": searchArray
                 }
-            } else if (req.query.reqIngredients) {
+            } else if (req.query.reqIngredients && (!Array.isArray(req.query.reqIngredients[0]))) {
                 search["ingredients.req"] = {
                     "$in": [req.query.reqIngredients]
                 }
@@ -186,8 +238,8 @@ async function main() {
         //Search via Est Cost
         if (req.query.estCostMin && req.query.estCostMax) {
             search["estCost"] = {
-                "$gte": req.query.estCostMin,
-                "$lte": req.query.estCostMax
+                "$gte": parseFloat(req.query.estCostMin),
+                "$lte": parseFloat(req.query.estCostMax)
             }
         }
 
@@ -303,7 +355,7 @@ async function main() {
                 req.body.foodTags.forEach((each) => {
                     foodTags.push(ObjectId(each))
                 })
-                    modification["foodTags"] = foodTags;
+                modification["foodTags"] = foodTags;
             }
 
             let showGameId = req.body.showGameId;
@@ -492,55 +544,55 @@ async function main() {
     })
 
 
-    
+
     //========= Break ========= Break ========= Break ========= Break ========= Break ========= Break ========= Break ========= Break ========= Break 
 
 
 
     //Add new Users
     app.post("/addUser", async (req, res) => {
+        if (req.body.nameNewAcc
+            && req.body.emailNewAcc
+            && req.body.passwordNewAcc
+            && req.body.dobNewAcc) {
+            let name = req.body.nameNewAcc;
+            let email = req.body.emailNewAcc;
+            let password = req.body.passwordNewAcc;
+            let dob = req.body.dobNewAcc;
+            let age = Number((new Date()).getFullYear()) - Number(dob.split("-")[0])
+            let profilePic = req.body.profilePicNewAcc;
 
-        let name = req.body.name;
-        let email = req.body.email;
-        let password = req.body.password;
-        let dob = req.body.dob;
-        let age = Number((new Date()).getFullYear()) - Number(dob.split("/")[2])
-        let profilePic = req.body.profilePic;
+            let newUser = {
+                "name": name,
+                "email": email,
+                "password": password,
+                "dob": dob,
+                "age": age,
+                "profilePic": profilePic
+            }
 
-        if (!name || !email || !password || !dob) {
+            const db = MongoUtil.getDB();
+            const result = await db.collection("user").insertOne(newUser);
+
+            res.status(201);
+            res.json({ "message": "New User account is Created" });
+        }else{
             res.status(400);
             res.json({ "error": "Please enter the required fields" })
         }
-
-        let newUser = {
-            "name": name,
-            "email": email,
-            "password": password,
-            "dob": dob,
-            "age": age,
-            "profilePic": profilePic
-        }
-
-        const db = MongoUtil.getDB();
-        const result = await db.collection("user").insertOne(newUser);
-
-        res.status(201);
-        res.json({ "message": "New User account is Created" });
     })
 
     //Login
     app.post("/login", async (req, res) => {
         let user = await MongoUtil.getDB().collection("user").findOne({
-            "email": req.body.email,
-            "password": req.body.password
+            "email": req.body.loginEmail,
+            "password": req.body.loginPassword
         })
         if (user) {
             let accessToken = generateAccessToken(user._id, user.email, user.password);
             res.send({ accessToken })
         } else {
-            res.send({
-                "error": "Authentication Error"
-            })
+            res.send("Authentication Error")
         }
     })
 
@@ -551,14 +603,23 @@ async function main() {
     //     res.status(200);
     //     res.json(result);
     // })
-    app.get("/user", checkIfAuthenticatedJWT, async (req, res) => {
-        res.send(req.user);
+    app.get("/user", async (req, res) => {
+        let results = await MongoUtil.getDB().collection("user")
+        .aggregate([
+            {
+                $match: {
+                    "email":req.query.email
+                } 
+            }
+        ]).toArray()
+        res.status(200);
+        res.json(results)
     })
 
     //Edit User
     app.put("/updateUser/:userId", checkIfAuthenticatedJWT, async (req, res) => {
         try {
-            let age = Number((new Date()).getFullYear()) - Number(req.body.dob.split("/")[2])
+            let age = Number((new Date()).getFullYear()) - Number(req.body.dob.split("/")[0])
 
             let modification = {
                 "name": req.body.name,
@@ -595,6 +656,14 @@ async function main() {
             res.json({ "error": error })
         }
     })
+
+    
+    app.get("/tags", async (req, res) => {
+        let results = await MongoUtil.getDB().collection("tags").find().toArray()
+        res.status(200);
+        res.json(results)
+    })
+
 }
 
 main();
