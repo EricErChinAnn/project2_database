@@ -209,6 +209,10 @@ async function main() {
             search["userId"] = req.query.userId
         }
 
+        if (req.query._id) {
+            search["_id"] = ObjectId(req.query._id)
+        }
+
         //Search via Ingredients Used
         if (req.query.reqIngredients) {
 
@@ -286,8 +290,85 @@ async function main() {
         res.json(results)
     })
 
+    app.get("/purerecipe", async (req, res) => {
+        let search = {};
+
+        //Search via name 
+        if (req.query.name) {
+            search["name"] = {
+                "$regex": req.query.name,
+                "$options": "i"
+            }
+        }
+
+        //Search via Category
+        if (req.query.category) {
+            search["category"] = {
+                "$regex" : req.query.category
+            }
+        }
+
+        //Search via ShowGame ID
+        if (req.query.showGameId) {
+            search["showGameId"] = ObjectId(req.query.showGameId)
+        }
+
+        //Search via User ID
+        if (req.query.userId) {
+            search["userId"] = req.query.userId
+        }
+
+        if (req.query._id) {
+            search["_id"] = ObjectId(req.query._id)
+        }
+
+        //Search via Ingredients Used
+        if (req.query.reqIngredients) {
+
+            // search["ingredients.req"] = {
+            //     "$regex": req.query.reqIngredients,
+            //     "$options": "i"
+            // }
+
+            let searchArray = [];
+        
+            console.log(req.query.reqIngredients)
+
+            if (Array.isArray(req.query.reqIngredients)) {
+                req.query.reqIngredients.forEach((each) => {
+                    searchArray.push(RegExp((each), "i"))
+                })
+                search["ingredients.req"] = {
+                    "$all": searchArray
+                }
+            } else if (req.query.reqIngredients && (!Array.isArray(req.query.reqIngredients[0]))) {
+                search["ingredients.req"] = {
+                    "$in": [req.query.reqIngredients]
+                }
+            }
+        }
+
+        //Search via Est Cost
+        if (req.query.estCostMin && req.query.estCostMax) {
+            search["estCost"] = {
+                "$gte": parseFloat(req.query.estCostMin),
+                "$lte": parseFloat(req.query.estCostMax)
+            }
+        }
+
+        let results = await MongoUtil.getDB().collection("recipe")
+            .aggregate([
+                {
+                    $match: search
+                }
+            ])
+            .toArray();
+        res.status(200);
+        res.json(results)
+    })
+
     //Update Recipe via ID
-    app.put("/updateRecipe/:recipeId", checkIfAuthenticatedJWT, async (req, res) => {
+    app.put("/updateRecipe/:recipeId", async (req, res) => {
         try {
             let lastEdit = (new Date()).getDate() + "/" + (new Date()).getMonth() + "/" + (new Date()).getFullYear()
 
@@ -301,7 +382,7 @@ async function main() {
             }
 
             let category = req.body.category;
-            if (name) {
+            if (category) {
                 modification["category"] = category;
             }
 
@@ -312,21 +393,25 @@ async function main() {
 
             let ingredientsReq = req.body.ingredients.req;
             if (ingredientsReq) {
+                ingredientsReq=ingredientsReq.filter(n => n)
                 modification["ingredients.req"] = ingredientsReq;
             }
 
             let ingredientsOptional = req.body.ingredients.optional;
             if (ingredientsOptional) {
+                ingredientsOptional=ingredientsOptional.filter(n => n)
                 modification["ingredients.optional"] = ingredientsOptional;
             }
 
             let prepSteps = req.body.prepSteps;
             if (prepSteps) {
+                prepSteps=prepSteps.filter(n => n)
                 modification["prepSteps"] = prepSteps;
             }
 
             let steps = req.body.steps;
             if (steps) {
+                steps=steps.filter(n => n)
                 modification["steps"] = steps;
             }
 
@@ -345,15 +430,18 @@ async function main() {
                 modification["duration.cooking"] = cookingDuration;
             }
 
-            let cookingTools = req.body.cookingTools;
-            if (cookingTools) {
+            let cookingTools = [];
+            if (req.body.cookingTools) {
+                req.body.cookingTools.forEach((each) => {
+                    if(each){cookingTools.push(ObjectId(each))}
+                })
                 modification["cookingTools"] = cookingTools;
             }
 
             let foodTags = [];
             if (req.body.foodTags) {
                 req.body.foodTags.forEach((each) => {
-                    foodTags.push(ObjectId(each))
+                    if(each){foodTags.push(ObjectId(each))}
                 })
                 modification["foodTags"] = foodTags;
             }
@@ -610,6 +698,27 @@ async function main() {
                 $match: {
                     "email":req.query.email
                 } 
+            }
+        ]).toArray()
+        res.status(200);
+        res.json(results)
+    })
+
+    app.get("/userPass", async (req, res) => {
+        search={}
+
+        if(req.query.email){
+            search["email"]=req.query.email
+        }
+
+        if(req.query.password){
+            search["password"]=req.query.password
+        }
+
+        let results = await MongoUtil.getDB().collection("user")
+        .aggregate([
+            {
+                $match: search
             }
         ]).toArray()
         res.status(200);
