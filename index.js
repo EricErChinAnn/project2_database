@@ -108,11 +108,18 @@ async function main() {
             let estCost = req.body.estCost;
 
             validation(req.body.reqIngredients, "Please enter the list of ingredients", res);
+            req.body.reqIngredients = req.body.reqIngredients.filter(n=>n)
+
             let reqIngredients = req.body.reqIngredients;
+
+            req.body.optionalIngredients=req.body.optionalIngredients.filter(n=>n)
             let optionalIngredients = req.body.optionalIngredients;
 
+            req.body.prepSteps = req.body.prepSteps.filter(n=>n)
             let prepSteps = req.body.prepSteps;
+
             validation(req.body.steps, "Please enter the cooking proccess", res);
+            req.body.steps=req.body.steps.filter(n=>n)
             let steps = req.body.steps;
 
             validation(req.body.picture, "Please upload a picture", res);
@@ -121,10 +128,12 @@ async function main() {
             let lastEdit = (new Date()).getDate() + "/" + (new Date()).getMonth() + "/" + (new Date()).getFullYear();
 
             let prepDuration = req.body.prepDuration;
+
             validation(req.body.cookingDuration, "Please enter the cooking duration", res)
             let cookingDuration = req.body.cookingDuration;
 
             validation(req.body.cookingTools, "Please enter the tools used in this recipe", res)
+            req.body.cookingTools=req.body.cookingTools.filter(n=>n)
             let cookingTools = req.body.cookingTools;
 
             let user = ObjectId(req.body.user_id);
@@ -135,7 +144,7 @@ async function main() {
                     foodTags.push(ObjectId(each))
                 })
             }
-            let reviewId = [];
+            let reviewId = req.body.reviewId;
 
             validation(req.body.showGameId, "Please select origin of the recipe", res)
             let showGameId = ObjectId(req.body.showGameId);
@@ -370,10 +379,17 @@ async function main() {
     //Update Recipe via ID
     app.put("/updateRecipe/:recipeId", async (req, res) => {
         try {
+            
             let lastEdit = (new Date()).getDate() + "/" + (new Date()).getMonth() + "/" + (new Date()).getFullYear()
 
+            let reviewId = req.body.reviewId
+            let user_id = ObjectId(req.body.user_id)
+
             let modification = {
-                "lastEdit": lastEdit
+                "lastEdit": lastEdit,
+                "reviewId": reviewId,
+                "userId": ObjectId(user_id),
+
             }
 
             let name = req.body.name;
@@ -388,16 +404,16 @@ async function main() {
 
             let estCost = req.body.estCost;
             if (estCost) {
-                modification["estCost"] = estCost;
+                modification["estCost"] = parseFloat(estCost);
             }
 
-            let ingredientsReq = req.body.ingredients.req;
+            let ingredientsReq = req.body.reqIngredients;
             if (ingredientsReq) {
                 ingredientsReq=ingredientsReq.filter(n => n)
                 modification["ingredients.req"] = ingredientsReq;
             }
 
-            let ingredientsOptional = req.body.ingredients.optional;
+            let ingredientsOptional = req.body.optionalIngredients;
             if (ingredientsOptional) {
                 ingredientsOptional=ingredientsOptional.filter(n => n)
                 modification["ingredients.optional"] = ingredientsOptional;
@@ -420,26 +436,28 @@ async function main() {
                 modification["picture"] = picture;
             }
 
-            let prepDuration = req.body.duration.prep;
+            let prepDuration = req.body.prepDuration;
             if (prepDuration) {
                 modification["duration.prep"] = prepDuration;
             }
 
-            let cookingDuration = req.body.duration.cooking;
+            let cookingDuration = req.body.cookingDuration;
             if (cookingDuration) {
                 modification["duration.cooking"] = cookingDuration;
             }
 
             let cookingTools = [];
             if (req.body.cookingTools) {
+                req.body.cookingTools = req.body.cookingTools.filter(n=>n)
                 req.body.cookingTools.forEach((each) => {
-                    if(each){cookingTools.push(ObjectId(each))}
+                    if(each){cookingTools.push(each)}
                 })
                 modification["cookingTools"] = cookingTools;
             }
 
             let foodTags = [];
             if (req.body.foodTags) {
+                req.body.foodTags = req.body.foodTags.filter(n=>n)
                 req.body.foodTags.forEach((each) => {
                     if(each){foodTags.push(ObjectId(each))}
                 })
@@ -469,7 +487,7 @@ async function main() {
     })
 
     //Delete Recipe via ID
-    app.delete("/deleteRecipe/:recipeId", checkIfAuthenticatedJWT, async (req, res) => {
+    app.delete("/deleteRecipe/:recipeId",async (req, res) => {
         try {
             let reviewToDelete = await MongoUtil.getDB().collection("recipe").findOne({ "_id": ObjectId(req.params.recipeId) })
             console.log(reviewToDelete.reviewId);
