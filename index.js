@@ -89,8 +89,7 @@ async function main() {
             .toArray();
 
         const randomize = (Math.floor(Math.random() * result.length));
-
-        console.log(result[randomize]);
+        
         res.status(200);
         res.json(result[randomize]);
     })
@@ -231,8 +230,6 @@ async function main() {
             // }
 
             let searchArray = [];
-        
-            console.log(req.query.reqIngredients)
 
             if (Array.isArray(req.query.reqIngredients)) {
                 req.query.reqIngredients.forEach((each) => {
@@ -340,8 +337,6 @@ async function main() {
             // }
 
             let searchArray = [];
-        
-            console.log(req.query.reqIngredients)
 
             if (Array.isArray(req.query.reqIngredients)) {
                 req.query.reqIngredients.forEach((each) => {
@@ -490,7 +485,6 @@ async function main() {
     app.delete("/deleteRecipe/:recipeId",async (req, res) => {
         try {
             let reviewToDelete = await MongoUtil.getDB().collection("recipe").findOne({ "_id": ObjectId(req.params.recipeId) })
-            console.log(reviewToDelete.reviewId);
 
             if (reviewToDelete.reviewId) {
                 await MongoUtil.getDB().collection("reviews").deleteMany({ "_id": { "$in": reviewToDelete.reviewId } })
@@ -795,7 +789,7 @@ async function main() {
 
 main();
 
-app.listen(3000, () => {
+app.listen(process.env.PORT || 3000, () => {
     console.log("Server is Live");
 })
 
