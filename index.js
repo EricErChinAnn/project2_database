@@ -539,17 +539,17 @@ async function main() {
 
 
     //Add new Review
-    app.post("/:recipeId/addReview", checkIfAuthenticatedJWT, async (req, res) => {
+    app.post("/:recipeId/addReview", async (req, res) => {
         try {
             let postedDate = (new Date()).getDate() + "/" + (new Date()).getMonth() + "/" + (new Date()).getFullYear();
 
-            let userName = await MongoUtil.getDB().collection("user").findOne({ "_id": ObjectId(req.user.user_id) });
+            let userName = await MongoUtil.getDB().collection("user").findOne({ "_id": ObjectId(req.body.user_id) });
 
             validation(req.body.title, "Please enter your title", res)
             let title = req.body.title;
 
             validation(req.body.rating, "Please select a rating", res)
-            let rating = req.body.rating;
+            let rating = Number(req.body.rating);
 
             validation(req.body.mainText, "Please enter your review", res)
             let mainText = req.body.mainText;
@@ -557,7 +557,7 @@ async function main() {
             let newReview =
             {
                 "name": userName.name,
-                "userId": req.user.user_id,
+                "userId": ObjectId(req.body.user_id),
                 "date": postedDate,
                 "title": title,
                 "rating": rating,
@@ -584,7 +584,7 @@ async function main() {
     })
 
     //Update Review via ID
-    app.put("/updateReview/:reviewId", checkIfAuthenticatedJWT, async (req, res) => {
+    app.put("/updateReview/:reviewId", async (req, res) => {
         try {
             let postedDate = (new Date()).getDate() + "/" + (new Date()).getMonth() + "/" + (new Date()).getFullYear()
 
@@ -599,12 +599,22 @@ async function main() {
 
             let rating = req.body.rating;
             if (rating) {
-                modification["rating"] = rating;
+                modification["rating"] = Number(rating);
             }
 
             let mainText = req.body.mainText;
             if (mainText) {
                 modification["mainText"] = mainText;
+            }
+
+            let name = req.body.name;
+            if (name) {
+                modification["name"] = name;
+            }
+
+            let userId = req.body.userId;
+            if (userId) {
+                modification["userId"] = userId;
             }
 
             await MongoUtil.getDB().collection('reviews').updateOne({
@@ -626,7 +636,7 @@ async function main() {
     })
 
     //Delete Review via ID
-    app.delete("/deleteReview/:reviewId", checkIfAuthenticatedJWT, async (req, res) => {
+    app.delete("/deleteReview/:reviewId", async (req, res) => {
         try {
             await MongoUtil.getDB().collection("recipe").updateMany(
                 {},
@@ -789,7 +799,11 @@ async function main() {
 
 main();
 
-app.listen(process.env.PORT || 3000, () => {
+// app.listen(process.env.PORT || 3000, () => {
+//     console.log("Server is Live");
+// })
+
+app.listen(3000, () => {
     console.log("Server is Live");
 })
 
