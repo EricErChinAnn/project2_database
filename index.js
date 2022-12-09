@@ -378,7 +378,7 @@ async function main() {
             let lastEdit = (new Date()).getDate() + "/" + (new Date()).getMonth() + "/" + (new Date()).getFullYear()
 
             let reviewId = req.body.reviewId
-            let user_id = ObjectId(req.body.user_id)
+            let user_id = req.body.user_id
 
             let modification = {
                 "lastEdit": lastEdit,
@@ -614,7 +614,7 @@ async function main() {
 
             let userId = req.body.userId;
             if (userId) {
-                modification["userId"] = userId;
+                modification["userId"] = ObjectId (userId);
             }
 
             await MongoUtil.getDB().collection('reviews').updateOne({
