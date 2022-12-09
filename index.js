@@ -50,6 +50,10 @@ async function main() {
         }
     }
 
+    app.get("/healthz", (req,res) => {
+        res.status(200)
+    })
+
     //Based Page
     app.get("/random", async (req, res) => {
         let result = await MongoUtil.getDB().collection("recipe").aggregate([
@@ -799,10 +803,10 @@ async function main() {
 
 main();
 
-app.listen(process.env.PORT || 3000, () => {
-    console.log("Server is Live");
-})
-
-// app.listen(3000, () => {
+// app.listen(process.env.PORT || 3000, () => {
 //     console.log("Server is Live");
 // })
+
+app.listen(3000, () => {
+    console.log("Server is Live");
+})
